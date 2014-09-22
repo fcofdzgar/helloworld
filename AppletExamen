@@ -1,0 +1,548 @@
+/**
+ * AppletExamen
+ *
+ * Personaje para juego previo Examen
+ *
+ * @author Francisco Fernandez
+ * @author Mario Diaz
+ * @version 1.00 2014/9/10
+ */
+ 
+import java.applet.Applet;
+import java.applet.AudioClip;
+import java.awt.Color;
+import java.awt.Graphics;
+import java.awt.Image;
+import java.awt.Toolkit;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
+import java.net.URL;
+import java.util.LinkedList;
+import javax.swing.JFrame;
+
+public class AppletExamen extends JFrame implements Runnable, MouseListener {
+
+    /* objetos para manejar el buffer del Applet y este no parpadee */
+    private Image    imaImagenApplet;   // Imagen a proyectar en Applet	
+    private Graphics graGraficaApplet;  // Objeto grafico de la Imagen
+    private int iVidas; // Variable que guarda las vidas
+    private int iScore; // Variable que guarda la puntuacion
+    private int iPosX;  // Variable que guarda la posicion del mouse en X
+    private int iPosY;  // Variable que guarda la posicion del mouse en Y
+    private int iDirNena; // Variable que guarda la direccion de la Nena
+    private int iVelCor; // Variable que guarda la velocidad del Corredor
+    private int iCorrCol; // Variable que guarda los corredores chocados
+    private Personaje perNena; // Objeto de la clase Personaje
+    private Personaje perCaminadores; // Objeto de la clase Personaje
+    private Personaje perCorredores; // Objeto de la clase Personaje
+    private boolean boolClic; // Variable que marca si hubo clic
+    private LinkedList lnkCaminadores;  // Lista de Objetos Caminadores
+    private LinkedList lnkCorredores;   // Lista de Objetos Corredores
+    private SoundClip souSonidoCamina;  // Objeto AudioClip Colision Caminador
+    private SoundClip souSonidoCorre;   // Objeto AudioClip Colision Corredor
+    
+    public AppletExamen() {
+        init();
+        start();
+    }
+
+    /** 
+     * init
+     * 
+     * Metodo sobrescrito de la clase <code>Applet</code>.<P>
+     * En este metodo se inizializan las variables o se crean los objetos
+     * a usarse en el <code>Applet</code> y se definen funcionalidades.
+     */
+    
+    public void init() {
+        // hago el applet de un tamaño 500,500
+        setSize(800, 600);
+        
+        boolClic = false;
+        iPosX = 0;
+        iPosY = 0;
+        
+        // Nena se inicializa inmovil
+        iDirNena = 0;
+        
+        iCorrCol = 0;
+        
+        // Se inicializan las listas de objetos Caminadores y Corredores
+        lnkCaminadores = new LinkedList();
+        lnkCorredores = new LinkedList();
+        
+        // Las vidas se inicializan al azar entre 4 y 6
+        iVidas = (int) (Math.random() * 3) + 4;
+        
+        // La puntuacion se inicializa en 0
+        iScore = 0;
+        
+        iVelCor = 1;
+        
+        //creo el sonido de la colision
+        souSonidoCamina = new SoundClip("File0177.wav");
+        
+        //creo el sonido de la colision
+        souSonidoCorre = new SoundClip("File0195.wav");
+                
+        // se crea imagen de Nena
+        URL urlImagenNena = this.getClass().getResource("nena.gif");
+        
+        // se crea a Nena 
+	perNena = new Personaje(0, 0,
+                Toolkit.getDefaultToolkit().getImage(urlImagenNena));
+        // se posiciona Nena en la parte inferior del applet en el centro
+        perNena.setX(getWidth()/2 - perNena.getAncho()/2);
+        perNena.setY(getHeight()/4 + (getHeight()/2 - perNena.getAlto()/2));
+        
+        int rnd = (int) (Math.random() * 3) + 10;
+        // se crean de 10 a 12 caminadores y se agregan a una lista
+        for (int iI = 1 ; iI <= rnd ; iI++){    
+            URL urlImagenCaminadores = this.getClass().
+                    getResource("alien1Camina.gif");
+            perCaminadores = new Personaje(0,0,
+                Toolkit.getDefaultToolkit().getImage(urlImagenCaminadores));
+            
+            int posX = (int) (Math.random() * getWidth())
+                    - perCaminadores.getAncho();
+            int posY = (int) (Math.random() * getHeight())
+                    - perCaminadores.getAlto() - getHeight();
+            
+            perCaminadores.setX(posX);
+            perCaminadores.setY(posY);
+            
+            lnkCaminadores.add(perCaminadores);
+        }
+        
+        int rnd2 = (int) (Math.random() * 4) + 12;
+        // se crean de 12 a 15 corredores y se agregan a una lista
+        for (int iI = 1 ; iI <= rnd2 ; iI++){    
+            URL urlImagenCorredores = this.getClass()
+                    .getResource("alien2Corre.gif");
+            perCorredores = new Personaje(0,0,
+                Toolkit.getDefaultToolkit().getImage(urlImagenCorredores));
+            int posX = 0 - (int) (Math.random() * 500);
+            int posY = (int) (Math.random() * getHeight());
+            
+            perCorredores.setX(posX);
+            perCorredores.setY(posY);
+            
+            lnkCorredores.add(perCorredores);
+        }
+        
+        addMouseListener(this);
+    }
+	
+    /** 
+     * start
+     * 
+     * Metodo sobrescrito de la clase <code>Applet</code>.<P>
+     * En este metodo se crea e inicializa el hilo
+     * para la animacion este metodo es llamado despues del init o 
+     * cuando el usuario visita otra pagina y luego regresa a la pagina
+     * en donde esta este <code>Applet</code>
+     * 
+     */
+    public void start () {
+        // Declaras un hilo
+        Thread th = new Thread (this);
+        // Empieza el hilo
+        th.start ();
+    }
+	
+    /** 
+     * run
+     * 
+     * Metodo sobrescrito de la clase <code>Thread</code>.<P>
+     * En este metodo se ejecuta el hilo, que contendrá las instrucciones
+     * de nuestro juego.
+     * 
+     */
+    public void run () {
+        // se realiza el ciclo del juego en este caso nunca termina
+        while (iVidas > 0) {
+            /* mientras dure el juego, se actualizan posiciones de jugadores
+               se checa si hubo colisiones para desaparecer jugadores o corregir
+               movimientos y se vuelve a pintar todo
+            */ 
+            actualiza();
+            checaColision();
+            repaint();
+            try	{
+                // El thread se duerme.
+                Thread.sleep (20);
+            }
+            catch (InterruptedException iexError)	{
+                System.out.println("Hubo un error en el juego " + 
+                        iexError.toString());
+            }
+	}
+    }
+	
+    /** 
+     * actualiza
+     * 
+     * Metodo que actualiza la posicion del objeto elefante 
+     * 
+     */
+    public void actualiza(){
+        
+        switch (iDirNena) {
+            case 0: {
+            break;
+            }
+            // si la direccion es 1 que vaya arriba  
+            case 1: {
+                perNena.setY(perNena.getY() - 2);
+            break;
+            }
+            // si la direccion es 2 que vaya abajo
+            case 2: {
+                perNena.setY(perNena.getY() + 2);
+            break;
+            }
+            // si la direccion es 3 que vaya a la izquierda
+            case 3: {
+                perNena.setX(perNena.getX() - 2);
+            break;
+            }
+            // si la direccion es 4 que vaya a la derecha
+            case 4: {
+                perNena.setX(perNena.getX() + 2);
+            break;
+            }   
+        }
+        int iVelCam = (int) (Math.random() * 3) + 3;
+        for(Object lnkCaminador : lnkCaminadores) {
+            Personaje perCaminadores = (Personaje) lnkCaminador;
+            
+            perCaminadores.setY(perCaminadores.getY() + iVelCam);
+        }
+        
+        for(Object lnkCorredor : lnkCorredores) {
+            Personaje perCorredores = (Personaje) lnkCorredor;
+            
+            perCorredores.setX(perCorredores.getX() + iVelCor);
+        }
+        
+        if (boolClic) {
+            switch(iDirNena) {
+                case 0: {
+                    if(perNena.getY() + (perNena.getAlto() / 2) > iPosY) {
+                        iDirNena = 1;
+                        boolClic = false;
+                    }
+                    else if (perNena.getY() + (perNena.getAlto() / 2) < iPosY) {
+                        iDirNena = 2;
+                        boolClic = false;
+                    }
+                break;
+                }
+                case 1: {
+                    //Si se mueve hacia arriba,
+                    if (((perNena.getY() + (perNena.getAlto() / 2)) 
+                            > iPosY) && ((perNena.getX() + 
+                            (perNena.getAncho() / 2)) < iPosX)) {
+                        //Y el click es arriba a la derecha, se mueve derecha
+                        iDirNena = 4;
+                        boolClic = false;
+                    }
+                    else if (((perNena.getY() + (perNena.getAlto() / 2)) 
+                            > iPosY) && ((perNena.getX() + 
+                            (perNena.getAncho() / 2)) > iPosX)) {
+                        //Y el click es arriba a la izquierda, 
+                        //se mueve izquierda
+                        iDirNena = 3;
+                        boolClic = false;
+                    }
+                    else if ((perNena.getY() + (perNena.getAlto() / 2)) 
+                            < iPosY) {
+                        //Y el click es abajo, se mueve abajo
+                        iDirNena = 2;
+                        boolClic = false;
+                    } 
+                    break;    
+                }
+                case 2: { 
+                    //Si se mueve hacia abajo,
+                    if (((perNena.getY() + (perNena.getAlto() / 2)) 
+                            < iPosY) && ((perNena.getX() + 
+                            (perNena.getAncho() / 2)) < iPosX)) {
+                        //Y el click es abajo a la derecha, se mueve derecha
+                        iDirNena = 4;
+                        boolClic = false;
+                    }
+                    else if (((perNena.getY() + (perNena.getAlto() / 2)) 
+                            < iPosY) && ((perNena.getX() + 
+                            (perNena.getAncho() / 2)) > iPosX)) {
+                        //Y el click es abajo a la izquierda, 
+                        //se mueve izquierda
+                        iDirNena = 3;
+                        boolClic = false;
+                    }
+                    else if ((perNena.getY() + (perNena.getAlto() / 2)) 
+                            > iPosY) {
+                        //Y el click es arriba, se mueve arriba
+                        iDirNena = 1;
+                        boolClic = false;
+                    } 
+                    break;    
+                }
+                case 3: { 
+                    //Si se mueve hacia la izquierda,
+                    if (((perNena.getX() + (perNena.getAncho() / 2)) 
+                            > iPosX) && ((perNena.getY() + 
+                            (perNena.getAlto() / 2)) > iPosY)) {
+                        //Y el click es arriba a la izquierda, se mueve arriba
+                        iDirNena = 1;
+                        boolClic = false;
+                    }
+                    else if (((perNena.getX() + (perNena.getAncho() / 2)) 
+                            > iPosX) && ((perNena.getY() + 
+                            (perNena.getAlto() / 2)) < iPosY)) {
+                        //Y el click es abajo a la izquierda, se mueve abajo
+                        iDirNena = 2;
+                        boolClic = false;
+                    }
+                    else if ((perNena.getX() + (perNena.getAncho() / 2)) 
+                            < iPosX) {
+                        //Y el click es a la derecha, se mueve derecha
+                        iDirNena = 4;
+                        boolClic = false;
+                    } 
+                    break;    
+                }    
+                case 4: {
+                    //Si se mueve hacia la drecha,
+                    if (((perNena.getX() + (perNena.getAncho() / 2)) 
+                            < iPosX) && ((perNena.getY() + 
+                            (perNena.getAlto() / 2)) > iPosY)) {
+                        //Y el click es arriba a la derecha, se mueve arriba
+                        iDirNena = 1;
+                        boolClic = false;
+                    }
+                    else if (((perNena.getX() + (perNena.getAncho() / 2)) 
+                            < iPosX) && ((perNena.getY() + 
+                            (perNena.getAlto() / 2)) < iPosY)) {
+                        //Y el click es abajo a la derecha, se mueve abajo
+                        iDirNena = 2;
+                        boolClic = false;
+                    }
+                    else if ((perNena.getX() + (perNena.getAncho() / 2)) 
+                            > iPosX) {
+                        //Y el click es a la izquierda, se mueve izquierda
+                        iDirNena = 3;
+                        boolClic = false;
+                    } 
+                    break;       	
+                }
+            }
+        }
+    }
+	
+    /**
+     * checaColision
+     * 
+     * Metodo usado para checar la colision del objeto elefante
+     * con las orillas del <code>Applet</code>.
+     * 
+     */
+    public void checaColision(){
+        // instrucciones para checar colision y reacomodar personajes si 
+        // es necesario
+
+            // Si Nena esta en el limite superior del applet
+            if(perNena.getY() < 0)
+                // cambia la direccion a 0
+                perNena.setY(0);
+            // Si Nena esta en el limite inferior del applet
+            if(perNena.getY() + perNena.getAlto() > getHeight())
+                // cambia la direccion a 0
+                perNena.setY(getHeight() - perNena.getAlto());
+            // Si Nena esta en el limite izquierdo del applet
+            if(perNena.getX() < 0)
+                // cambia la direccion a 4
+                perNena.setX(0);
+            // Si Nena esta en el limite derecho del applet
+            if(perNena.getX() + perNena.getAncho() > getWidth())
+                // cambia la direccion a 3
+                perNena.setX(getWidth() - perNena.getAncho());
+        
+        // si un Caminador esta en el limite inferior del applet
+        for(Object lnkCaminador : lnkCaminadores) {
+            Personaje perCaminadores = (Personaje) lnkCaminador;
+            if (perCaminadores.getY() + perCaminadores.getAlto() > getHeight()){
+                // se reposiciona al azar
+                int posX = (int) (Math.random() * getWidth())
+                    - perCaminadores.getAncho();
+                int posY = (int) (Math.random() * getHeight())
+                    - perCaminadores.getAlto() - getHeight();
+            
+                perCaminadores.setX(posX);
+                perCaminadores.setY(posY);
+            }
+        }
+        // si un Corredor esta en el limite derecho del applet
+        for(Object lnkCorredor : lnkCorredores) {
+            Personaje perCorredores = (Personaje) lnkCorredor;
+            if (perCorredores.getX() + perCorredores.getAncho() > getWidth()) {
+                // se reposiciona al azar
+                int posX = 0 - (int) (Math.random() * 500);
+                int posY = (int) (Math.random() * getHeight());
+            
+                perCorredores.setX(posX);
+                perCorredores.setY(posY);
+            }
+        }
+        
+        for(Object lnkCaminador : lnkCaminadores) {
+            Personaje perCaminadores = (Personaje) lnkCaminador;
+            // Si un Caminador colisiona con Nena
+            if(perCaminadores.colisiona(perNena)) {
+                // Aumenta la puntuacion en 1
+                iScore++;
+                souSonidoCamina.play();
+                // Se reposiciona el Caminador chocado
+                perCaminadores.setX((int) ((getWidth()/2) - Math.random() 
+                        * getWidth() / 2));
+                perCaminadores.setY(-(int) (Math.random() * (getHeight() / 2)));
+            }
+        }
+        
+        for(Object lnkCorredor : lnkCorredores) {
+            Personaje perCorredores = (Personaje) lnkCorredor;
+            // si un corredor colisiona con la nena
+            if(perCorredores.colisiona(perNena)) {
+                // se reposiciona el corredor
+                iCorrCol++;
+                souSonidoCorre.play();
+                perCorredores.setX(- (int) (Math.random() * (getWidth() / 2)));
+                perCorredores.setY((int) ((getHeight()/2) - Math.random() 
+                    * getHeight() / 2));
+                // si se choca con 5 corredores se quita una vida y se aumenta
+                // la velocidad del corredor
+                if (iCorrCol == 5){
+                    iVidas--;
+                    iVelCor++;
+                    iCorrCol = 0;
+                }  
+            }
+        }
+        
+    }
+	
+    /**
+     * update
+     * 
+     * Metodo sobrescrito de la clase <code>Applet</code>,
+     * heredado de la clase Container.<P>
+     * En este metodo lo que hace es actualizar el contenedor y 
+     * define cuando usar ahora el paint
+     * @param graGrafico es el <code>objeto grafico</code> usado para dibujar.
+     * 
+     */
+    public void paint (Graphics graGrafico){
+        // Inicializan el DoubleBuffer
+        if (imaImagenApplet == null){
+                imaImagenApplet = createImage (this.getSize().width, 
+                        this.getSize().height);
+                graGraficaApplet = imaImagenApplet.getGraphics ();
+        }
+
+        // creo imagen para el background
+        URL urlImagenFondo = this.getClass().getResource("espacio.jpg");
+        Image imaImagenEspacio = Toolkit.getDefaultToolkit().getImage(urlImagenFondo);
+
+        // Despliego la imagen
+        graGraficaApplet.drawImage(imaImagenEspacio, 0, 0, 
+                getWidth(), getHeight(), this);
+
+        // Actualiza el Foreground.
+        graGraficaApplet.setColor (getForeground());
+        paint1(graGraficaApplet);
+
+        // Dibuja la imagen actualizada
+        graGrafico.drawImage (imaImagenApplet, 0, 0, this);
+        
+    }
+    
+    /**
+     * paint
+     * 
+     * Metodo sobrescrito de la clase <code>Applet</code>,
+     * heredado de la clase Container.<P>
+     * En este metodo se dibuja la imagen con la posicion actualizada,
+     * ademas que cuando la imagen es cargada te despliega una advertencia.
+     * @param g es el <code>objeto grafico</code> usado para dibujar.
+     * 
+     */
+    public void paint1(Graphics g) {
+        // Se despliega el Puntaje y las Vidas en blanco
+        g.setColor(Color.white);
+        g.drawString("Vidas: " + iVidas, 20, 50);
+        g.drawString("Score: " + iScore, 20, 70);
+        // Si la imagen ya se cargo
+        if (iVidas > 0) {  
+            if (perNena != null & lnkCaminadores != null) {
+                // Dibuja la imagen de Nena en la posicion actualizada
+                g.drawImage(perNena.getImagen(), perNena.getX(),
+                      perNena.getY(), this);
+            
+                for(Object lnkCaminador : lnkCaminadores) {
+                    // Dibuja la imagen de los Caminadores en posicion al azar
+                    Personaje perCaminadores = (Personaje) lnkCaminador;
+                    g.drawImage(perCaminadores.getImagen(), 
+                            perCaminadores.getX(), perCaminadores.getY(), this);
+                }
+            
+                for(Object lnkCorredor : lnkCorredores) {
+                    // Dibuja la imagen de los Corredores en posicion al azar
+                    Personaje perCorredores = (Personaje) lnkCorredor;
+                    g.drawImage(perCorredores.getImagen(), 
+                            perCorredores.getX(), perCorredores.getY(), this);
+                }
+            
+            }
+        }
+        else {
+            // Cargo la imagen de game over
+            URL urlImagenOver = this.getClass().getResource("game_over.jpg");
+            Image imaImagenOver = Toolkit.getDefaultToolkit().getImage(urlImagenOver);
+
+            // Despliego la imagen
+            g.drawImage(imaImagenOver, 0, 0, 
+                   getWidth(), getHeight(), this);
+        }
+
+    }
+
+    @Override
+    public void mouseClicked(MouseEvent mouEvent) {
+        // Capturo la posicion del mouse
+        boolClic = true;
+        iPosX = mouEvent.getX();
+        iPosY = mouEvent.getY();
+    }
+
+    @Override
+    public void mousePressed(MouseEvent me) {
+        
+    }
+
+    @Override
+    public void mouseReleased(MouseEvent mouEvent) {
+        boolClic = false;
+        
+    }
+
+    @Override
+    public void mouseEntered(MouseEvent me) {
+        
+    }
+
+    @Override
+    public void mouseExited(MouseEvent me) {
+        
+    }
+
+}
